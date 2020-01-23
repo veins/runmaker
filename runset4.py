@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #
 # Copyright (C) 2012 Christoph Sommer <christoph.sommer@uibk.ac.at>
@@ -24,6 +24,7 @@
 # Reads a text file with jobs and manipulates their state.
 #
 
+from __future__ import print_function
 import fcntl
 import os
 import select
@@ -62,7 +63,7 @@ def read_jobs(f):
     while 1:
         job = Job()
         job.offset = f.tell()
-        s = f.readline()
+        s = f.readline().decode()
         job.length = f.tell() - job.offset
         if not s:
             break
@@ -103,11 +104,11 @@ def set_job_state(f, job, newstate):
 
     try:
         f.seek(job.offset)
-        s = f.read(1)
+        s = f.read(1).decode()
         if s != job.state:
             return False
         f.seek(job.offset)
-        f.write(newstate)
+        f.write(newstate.encode())
         f.flush()
     finally:
         # release the exclusive lock
@@ -132,7 +133,7 @@ def process_file(fname, jobIds, options):
         if options.set_state:
             assert(set_job_state(f, job, options.set_state))
         if options.list:
-            print "%s: %s - %s" % (job.offset, job.state, job.cmd)
+            print("%s: %s - %s" % (job.offset, job.state, job.cmd))
 
     f.close()
 
@@ -153,9 +154,9 @@ def main():
 
     # get file name
     if len(args) < 1:
-        print "Need a filename (a list of jobs)"
-        print ""
-        print parser.get_usage()
+        print("Need a filename (a list of jobs)")
+        print("")
+        print(parser.get_usage())
         sys.exit(1)
     fname = args[0]
 

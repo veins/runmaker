@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #
 # Copyright (C) 2014-2019 Christoph Sommer <christoph.sommer@uibk.ac.at>
@@ -24,6 +24,7 @@
 # Waits until all jobs in a text file are processed, then exits.
 #
 
+from __future__ import print_function
 import fcntl
 import sys
 import time
@@ -58,7 +59,7 @@ def read_jobs(f):
     while 1:
         job = Job()
         job.offset = f.tell()
-        s = f.readline()
+        s = f.readline().decode()
         job.length = f.tell() - job.offset
         if not s:
             break
@@ -96,7 +97,7 @@ def refresh_job_states(f, jobs):
         for job in jobs:
             assert(job.length > 0)
             f.seek(job.offset)
-            s = f.read(1)
+            s = f.read(1).decode()
             job.state = s
     finally:
         # release the read lock
@@ -120,9 +121,9 @@ def main():
 
     # get file name
     if len(args) < 1:
-        print "Need a filename (a list of jobs)"
-        print ""
-        print parser.get_usage()
+        print("Need a filename (a list of jobs)")
+        print("")
+        print(parser.get_usage())
         sys.exit(1)
     fname = args[0]
 
@@ -154,7 +155,7 @@ def main():
 
                 len_rest = bar_len - (len_running + len_failed + len_error + len_done)
                 bar_print = ("=" * len_done) + ("e" * len_error) + ("!" * len_failed) + (">" * len_running) + (" " * len_rest)
-                print "progress: %3d of %3d jobs processed, %d errors [%s]" % (count_failed + count_error + count_done, len(jobs), count_failed + count_error, bar_print)
+                print("progress: %3d of %3d jobs processed, %d errors [%s]" % (count_failed + count_error + count_done, len(jobs), count_failed + count_error, bar_print))
 
         if count_unproc + count_running == 0:
             if options.use_exit_status and (count_done != len(jobs)):

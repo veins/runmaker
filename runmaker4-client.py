@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #
 # Copyright (C) 2012-2019 Christoph Sommer <christoph.sommer@uibk.ac.at>
@@ -25,6 +25,7 @@
 # Executes jobs provided via network by runmaker4-server.py
 #
 
+from __future__ import print_function
 import fcntl
 import os
 import select
@@ -66,15 +67,15 @@ def set_job_state(job, newstate, host, options):
             sa = (host, options.port)
             sock.connect(sa)
             #send command to change job status
-            sock.sendall("SET " + options.token + " " + str(job.number) + " " + newstate)
+            sock.sendall(("SET " + options.token + " " + str(job.number) + " " + newstate).encode())
             #receive the ack, to be sure server go the message
-            sock.recv(2048)
+            sock.recv(2048).decode()
             #close the connection
             sock.close()
             return
         except:
             #if something went wrong, wait a little and try again
-            print "Error connecting to server. Retrying in a few seconds."
+            print("Error connecting to server. Retrying in a few seconds.")
             time.sleep(random.uniform(0,3))
             continue
 
@@ -87,24 +88,24 @@ def run_job(job, options):
     """
 
     s = "executing `%s'" % job.cmd
-    print s
+    print(s)
 
     logf = None
-    log = [":".ljust(LOGWIDTH) for i in xrange(options.logfile_lines)]
+    log = [":".ljust(LOGWIDTH) for i in range(options.logfile_lines)]
     if options.logfile:
         s = ".-> %s (in %s)" % (job.cmd, os.getcwd())
         s = "%s\n" % s[:LOGWIDTH].ljust(LOGWIDTH)
         logf = open(options.logfile, 'rb+', 0)
         logf.seek((job.number - 1) * (LOGWIDTH + 1) * (options.logfile_lines + 1))
-        logf.write(s)
+        logf.write(s.encode())
         for s in log:
-            logf.write("%s\n" % s)
+            logf.write(("%s\n" % s).encode())
 
     opp = subprocess.Popen(job.cmd, shell=True, preexec_fn=os.setpgrp, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, )
     try:
         opp_pid = "%s,%s" % (os.uname()[1], opp.pid)
         s = "status (%s): %s \"%s\"" % (opp_pid, "forked", job.cmd)
-        print s
+        print(s)
         if logf:
             s = "+ %s" % s
             log.pop(0)
@@ -122,7 +123,7 @@ def run_job(job, options):
                 (rfd, event) = event
                 if event & select.POLLIN:
                     if rfd == opp.stdout.fileno():
-                        line = opp.stdout.readline()
+                        line = opp.stdout.readline().decode()
                         if len(line) > 0:
                             s = "stdout (%s): %s" % (opp_pid, line[:-1])
                             if logf:
@@ -130,9 +131,9 @@ def run_job(job, options):
                                 log.pop(0)
                                 log.append(s[:LOGWIDTH].ljust(LOGWIDTH))
                             else:
-                                print s
+                                print(s)
                     if rfd == opp.stderr.fileno():
-                        line = opp.stderr.readline()
+                        line = opp.stderr.readline().decode()
                         if len(line) > 0:
                             s = "stderr (%s): %s" % (opp_pid, line[:-1])
                             if logf:
@@ -140,19 +141,19 @@ def run_job(job, options):
                                 log.pop(0)
                                 log.append(s[:LOGWIDTH].ljust(LOGWIDTH))
                             else:
-                                print s
+                                print(s)
                 if event & select.POLLHUP:
                     poll.unregister(rfd)
                     pollc = pollc - 1
                 if logf:
                     logf.seek((job.number - 1) * (LOGWIDTH + 1) * (options.logfile_lines + 1) + (LOGWIDTH + 1))
                     for s in log:
-                        logf.write("%s\n" % s)
+                        logf.write(("%s\n" % s).encode())
                 if pollc > 0:
                     events = poll.poll()
         returncode = opp.wait()
         s = "status (%s): %s %s \"%s\"" % (opp_pid, "exit", returncode, job.cmd)
-        print s
+        print(s)
         if logf:
             s = "+ %s" % s
             log.pop(0)
@@ -160,7 +161,7 @@ def run_job(job, options):
         if logf:
             logf.seek((job.number - 1) * (LOGWIDTH + 1) * (options.logfile_lines + 1) + (LOGWIDTH + 1))
             for s in log:
-                logf.write("%s\n" % s)
+                logf.write(("%s\n" % s).encode())
         return returncode
 
     except:
@@ -191,20 +192,20 @@ def process_file(host, options):
                 sock.connect(sa)
 
                 #ask for a job
-                sock.sendall("GET " + options.token)
-                response = sock.recv(2048)
+                sock.sendall(("GET " + options.token).encode())
+                response = sock.recv(2048).decode()
                 if (response == ""):
-                    print "Empty server response"
+                    print("Empty server response")
                     time.sleep(random.uniform(0,3))
                     continue
                 if (response == "INVALID_CMD"):
-                    print "Got invalid command error from server. Check the code. Quitting"
+                    print("Got invalid command error from server. Check the code. Quitting")
                     sys.exit(1)
                 if (response == "INVALID_TOKEN"):
-                    print "Got invalid token error. Check that token or token file are correct. Quitting"
+                    print("Got invalid token error. Check that token or token file are correct. Quitting")
                     sys.exit(1)
 
-                sock.sendall("ACK")
+                sock.sendall("ACK".encode())
                 #job looks like "JOBID CMD"
                 v = response.split(" ", 1)
 
@@ -233,17 +234,17 @@ def process_file(host, options):
             except Exception as ex:
                 #if we got an exception, sleep for a random amount of time
                 #then ask again
-                print "Exception caught. Retrying in a few seconds."
+                print("Exception caught. Retrying in a few seconds.")
                 lastException = ex
                 time.sleep(random.uniform(0,3))
                 continue
 
         #when the number of attempts goes to 0, then something bad is going on. stop everything
         if (not job_done and attempts == 0):
-            print "Job quitting because of consecutive errors."
+            print("Job quitting because of consecutive errors.")
             if (lastException != 0):
-                print "Last exception:"
-                print lastException
+                print("Last exception:")
+                print(lastException)
             run = False
 
 
@@ -265,14 +266,14 @@ def main():
 
     if options.logfile:
         if (not os.path.exists(options.logfile)) or (not os.path.isfile(options.logfile)):
-            print "You need to create log file %s before starting runmaker4-client. Stop" % options.logfile
+            print("You need to create log file %s before starting runmaker4-client. Stop" % options.logfile)
             sys.exit(1)
 
     # get file name
     if len(args) != 1:
-        print "Need host address or name"
-        print ""
-        print parser.get_usage()
+        print("Need host address or name")
+        print("")
+        print(parser.get_usage())
         sys.exit(1)
     host = args[0]
 

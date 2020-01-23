@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #
 # Copyright (C) 2012-2019 Christoph Sommer <christoph.sommer@uibk.ac.at>
@@ -25,6 +25,7 @@
 # Waits for connections from runmaker4.py asking for a job to perform
 #
 
+from __future__ import print_function
 import fcntl
 import os
 import select
@@ -84,7 +85,7 @@ def read_jobs(f):
         job = Job()
         job.number = len(jobs)+1
         job.offset = f.tell()
-        s = f.readline()
+        s = f.readline().decode()
         job.length = f.tell() - job.offset
         if not s:
             break
@@ -118,11 +119,11 @@ def set_job_state(f, job, newstate):
     assert(len(newstate) == 1)
 
     f.seek(job.offset)
-    s = f.read(1)
+    s = f.read(1).decode()
     if s != job.state:
        return False
     f.seek(job.offset)
-    f.write(newstate)
+    f.write(newstate.encode())
     f.flush()
 
     job.state = newstate
@@ -194,8 +195,8 @@ def process_get(jobs, f, client, options, client_address):
     job = get_new_job(jobs, f, options)
     logging.debug(str(client_address) + " Returning job number " + str(job.number) + " command: " + job.cmd)
     #return the client the id of the job and the command to execute
-    client.sendall(str(job.number) + " " + job.cmd)
-    client.recv(2048)
+    client.sendall((str(job.number) + " " + job.cmd).encode())
+    client.recv(2048).decode()
 
 def process_set(jobs, f, client, options, jobn, state, client_address):
     #get all jobs and search for the job requested by the client
@@ -230,9 +231,9 @@ def main():
 
     # get file name
     if len(args) != 1:
-        print "Need exactly one filename (a list of all jobs to run)"
-        print ""
-        print parser.get_usage()
+        print("Need exactly one filename (a list of all jobs to run)")
+        print("")
+        print(parser.get_usage())
         sys.exit(1)
     fname = args[0]
 
@@ -249,10 +250,10 @@ def main():
     tokenSize=6
     tokenChars=string.ascii_uppercase + string.digits
     token = ''.join(random.choice(tokenChars) for _ in range(tokenSize))
-    print "Token for runmaker4-client.py: %s (written to %s)" % (token, options.tokenfile)
+    print("Token for runmaker4-client.py: %s (written to %s)" % (token, options.tokenfile))
     if (options.tokenfile != ""):
         #we need to write the token to a file
-        with os.fdopen(os.open(options.tokenfile, os.O_WRONLY | os.O_CREAT, 0600), 'w') as handle:
+        with os.fdopen(os.open(options.tokenfile, os.O_WRONLY | os.O_CREAT, 0o600), 'w') as handle:
             handle.write(token)
 
     #create a socket and start listening
@@ -271,22 +272,22 @@ def main():
             client, client_address = sock.accept()
 
             logging.debug("Connection from " + str(client_address))
-            data = client.recv(2048).rstrip()
+            data = client.recv(2048).rstrip().decode()
 
             cmd = parse_command(data, token, options)
 
             if cmd.parseResult == Command.INVALID_CMD:
-                client.sendall("INVALID_CMD")
+                client.sendall("INVALID_CMD".encode())
                 logging.error(str(client_address) +  " Received invalid command: " + data)
             elif cmd.parseResult == Command.INVALID_TOKEN:
-                client.sendall("INVALID_TOKEN")
+                client.sendall("INVALID_TOKEN".encode())
                 logging.error(str(client_address) + " Received invalid token. Ignoring request: " + data)
             else:
                 if cmd.command == Command.CMD_GET:
                     process_get(jobs, f, client, options, client_address)
                 elif cmd.command == Command.CMD_SET:
                     process_set(jobs, f, client, options, cmd.jobNumber, cmd.jobStatus, client_address)
-                    client.sendall("ACK")
+                    client.sendall("ACK".encode())
 
             client.close()
 

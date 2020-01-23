@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #
 # Copyright (C) 2012-2019 Christoph Sommer <christoph.sommer@uibk.ac.at>
@@ -28,6 +28,7 @@
 # Based on a joint idea with David Eckhoff <eckhofff@cs.fau.de>
 #
 
+from __future__ import print_function
 import fcntl
 import os
 import select
@@ -74,7 +75,7 @@ def read_jobs(f):
         job = Job()
         job.number = len(jobs)+1
         job.offset = f.tell()
-        s = f.readline()
+        s = f.readline().decode()
         job.length = f.tell() - job.offset
         if not s:
             break
@@ -115,11 +116,11 @@ def set_job_state(f, job, newstate):
 
     try:
         f.seek(job.offset)
-        s = f.read(1)
+        s = f.read(1).decode()
         if s != job.state:
             return False
         f.seek(job.offset)
-        f.write(newstate)
+        f.write(newstate.encode())
         f.flush()
     finally:
         # release the exclusive lock
@@ -136,10 +137,10 @@ def run_job(job, options):
     """
 
     s = "executing `%s'" % job.cmd
-    print s
+    print(s)
 
     logf = None
-    log = [":".ljust(LOGWIDTH) for i in xrange(options.logfile_lines)]
+    log = [":".ljust(LOGWIDTH) for i in range(options.logfile_lines)]
     log_changed = True
     last_log_write = 0
     if options.logfile:
@@ -147,15 +148,15 @@ def run_job(job, options):
         s = "%s\n" % s[:LOGWIDTH].ljust(LOGWIDTH)
         logf = open(options.logfile, 'rb+', 0)
         logf.seek((job.number - 1) * (LOGWIDTH + 1) * (options.logfile_lines + 1))
-        logf.write(s)
+        logf.write(s.encode())
         for s in log:
-            logf.write("%s\n" % s)
+            logf.write(("%s\n" % s).encode())
 
     opp = subprocess.Popen(job.cmd, shell=True, preexec_fn=os.setpgrp, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, )
     try:
         opp_pid = "%s,%s" % (os.uname()[1], opp.pid)
         s = "status (%s): %s \"%s\"" % (opp_pid, "forked", job.cmd)
-        print s
+        print(s)
         if logf:
             s = "+ %s" % s
             log.pop(0)
@@ -174,7 +175,7 @@ def run_job(job, options):
                 (rfd, event) = event
                 if event & select.POLLIN:
                     if rfd == opp.stdout.fileno():
-                        line = opp.stdout.readline()
+                        line = opp.stdout.readline().decode()
                         if len(line) > 0:
                             s = "stdout (%s): %s" % (opp_pid, line[:-1])
                             if logf:
@@ -183,9 +184,9 @@ def run_job(job, options):
                                 log.append(s[:LOGWIDTH].ljust(LOGWIDTH))
                                 log_changed = True
                             else:
-                                print s
+                                print(s)
                     if rfd == opp.stderr.fileno():
-                        line = opp.stderr.readline()
+                        line = opp.stderr.readline().decode()
                         if len(line) > 0:
                             s = "stderr (%s): %s" % (opp_pid, line[:-1])
                             if logf:
@@ -194,7 +195,7 @@ def run_job(job, options):
                                 log.append(s[:LOGWIDTH].ljust(LOGWIDTH))
                                 log_changed = True
                             else:
-                                print s
+                                print(s)
                 if event & select.POLLHUP:
                     poll.unregister(rfd)
                     pollc = pollc - 1
@@ -202,7 +203,7 @@ def run_job(job, options):
                 if log_changed and (time.time() - last_log_write) >= LOGMAXDELAY:
                     logf.seek((job.number - 1) * (LOGWIDTH + 1) * (options.logfile_lines + 1) + (LOGWIDTH + 1))
                     for s in log:
-                        logf.write("%s\n" % s)
+                        logf.write(("%s\n" % s).encode())
                     last_log_write = time.time()
                     log_changed = False
             if pollc > 0:
@@ -210,7 +211,7 @@ def run_job(job, options):
                 events = poll.poll(next_wakeup)
         returncode = opp.wait()
         s = "status (%s): %s %s \"%s\"" % (opp_pid, "exit", returncode, job.cmd)
-        print s
+        print(s)
         if logf:
             s = "+ %s" % s
             log.pop(0)
@@ -218,7 +219,7 @@ def run_job(job, options):
         if logf:
             logf.seek((job.number - 1) * (LOGWIDTH + 1) * (options.logfile_lines + 1) + (LOGWIDTH + 1))
             for s in log:
-                logf.write("%s\n" % s)
+                logf.write(("%s\n" % s).encode())
         return returncode
 
     except:
@@ -282,9 +283,9 @@ def main():
 
     # get file name
     if len(args) != 1:
-        print "Need exactly one filename (a list of all jobs to run)"
-        print ""
-        print parser.get_usage()
+        print("Need exactly one filename (a list of all jobs to run)")
+        print("")
+        print(parser.get_usage())
         sys.exit(1)
     fname = args[0]
 
